@@ -1,0 +1,7 @@
+/vendor/
+/.phpunit.cache/
+/storage/carts/
+.DS_Store
+*.log
+*.sqlite
+.env
