@@ -1,27 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ttpryg\CartEngine\ValueObjects;
 
 use InvalidArgumentException;
 
 class ConditionValue
 {
-    private string $value;
-    private bool $isPercentage;
-    private float $amount;
+    private readonly string $value;
+
+    private readonly bool $isPercentage;
+
+    private readonly float $amount;
 
     public function __construct(string $value)
     {
         $value = trim($value);
         if (empty($value)) {
-            throw new InvalidArgumentException("Condition value cannot be empty.");
+            throw new InvalidArgumentException('Condition value cannot be empty.');
         }
 
         $this->value = $value;
         $this->isPercentage = str_ends_with($value, '%');
 
         $numericString = rtrim($value, '%');
-        if (!is_numeric($numericString)) {
+        if (! is_numeric($numericString)) {
             throw new InvalidArgumentException("Invalid condition numeric value: {$value}");
         }
 

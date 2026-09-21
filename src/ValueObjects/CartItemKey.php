@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ttpryg\CartEngine\ValueObjects;
 
 class CartItemKey
@@ -7,6 +9,7 @@ class CartItemKey
     public static function generate(string $itemType, string|int $itemId, array $attributes = []): string
     {
         ksort($attributes);
-        return md5($itemType . ':' . $itemId . ':' . json_encode($attributes));
+
+        return md5($itemType.':'.$itemId.':'.json_encode($attributes));
     }
 }

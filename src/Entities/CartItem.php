@@ -7,35 +7,19 @@ use Ttpryg\CartEngine\ValueObjects\CartItemKey;
 
 class CartItem implements CartItemInterface
 {
-    private int|string|null $id;
-    private string $itemType;
-    private string|int $itemId;
-    private string $name;
-    private float $unitPrice;
-    private float $quantity;
-    private array $attributes;
-    private array $metadata;
-    private string $key;
+    private readonly string $key;
 
     public function __construct(
-        string $itemType,
-        string|int $itemId,
-        string $name,
-        float $unitPrice,
-        float $quantity = 1.0,
-        array $attributes = [],
-        array $metadata = [],
-        int|string|null $id = null
+        private readonly string $itemType,
+        private readonly string|int $itemId,
+        private string $name,
+        private float $unitPrice,
+        private float $quantity = 1.0,
+        private readonly array $attributes = [],
+        private readonly array $metadata = [],
+        private int|string|null $id = null
     ) {
-        $this->id = $id;
-        $this->itemType = $itemType;
-        $this->itemId = $itemId;
-        $this->name = $name;
-        $this->unitPrice = $unitPrice;
-        $this->quantity = $quantity;
-        $this->attributes = $attributes;
-        $this->metadata = $metadata;
-        $this->key = CartItemKey::generate($itemType, $itemId, $attributes);
+        $this->key = CartItemKey::generate($this->itemType, $this->itemId, $this->attributes);
     }
 
     public function getId(): int|string|null
@@ -46,6 +30,7 @@ class CartItem implements CartItemInterface
     public function setId(int|string $id): self
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -67,6 +52,7 @@ class CartItem implements CartItemInterface
     public function setName(string $name): self
     {
         $this->name = $name;
+
         return $this;
     }
 
@@ -78,6 +64,7 @@ class CartItem implements CartItemInterface
     public function setUnitPrice(float $unitPrice): self
     {
         $this->unitPrice = $unitPrice;
+
         return $this;
     }
 
@@ -89,6 +76,7 @@ class CartItem implements CartItemInterface
     public function setQuantity(float $quantity): self
     {
         $this->quantity = $quantity;
+
         return $this;
     }
 

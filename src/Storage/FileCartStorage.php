@@ -9,20 +9,20 @@ use Ttpryg\CartEngine\Entities\CartItem;
 
 class FileCartStorage implements CartStorageInterface
 {
-    private string $storagePath;
+    private readonly string $storagePath;
 
     public function __construct(?string $storagePath = null)
     {
-        $this->storagePath = rtrim($storagePath ?? sys_get_temp_dir() . '/cart_engine_cache', '/');
-        if (!is_dir($this->storagePath)) {
-            mkdir($this->storagePath, 0777, true);
+        $this->storagePath = rtrim($storagePath ?? sys_get_temp_dir().'/cart_engine_cache', '/');
+        if (! is_dir($this->storagePath)) {
+            mkdir($this->storagePath, 0777, recursive: true);
         }
     }
 
     public function get(string $cartId): ?Cart
     {
         $filePath = $this->getFilePath($cartId);
-        if (!file_exists($filePath)) {
+        if (! file_exists($filePath)) {
             return null;
         }
 
@@ -31,8 +31,8 @@ class FileCartStorage implements CartStorageInterface
             return null;
         }
 
-        $data = json_decode($json, true);
-        if (!is_array($data)) {
+        $data = json_decode($json, associative: true);
+        if (! is_array($data)) {
             return null;
         }
 
@@ -54,6 +54,7 @@ class FileCartStorage implements CartStorageInterface
         if (file_exists($filePath)) {
             return unlink($filePath);
         }
+
         return true;
     }
 
@@ -65,13 +66,14 @@ class FileCartStorage implements CartStorageInterface
     private function getFilePath(string $cartId): string
     {
         $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $cartId);
-        return $this->storagePath . '/cart_' . $safeId . '.json';
+
+        return $this->storagePath.'/cart_'.$safeId.'.json';
     }
 
     private function unserializeCart(array $data): Cart
     {
         $items = [];
-        if (!empty($data['items'])) {
+        if (! empty($data['items'])) {
             foreach ($data['items'] as $key => $itemData) {
                 $items[$key] = new CartItem(
                     itemType: $itemData['item_type'],
@@ -87,7 +89,7 @@ class FileCartStorage implements CartStorageInterface
         }
 
         $conditions = [];
-        if (!empty($data['conditions'])) {
+        if (! empty($data['conditions'])) {
             foreach ($data['conditions'] as $name => $condData) {
                 $conditions[$name] = new CartCondition(
                     name: $condData['name'],

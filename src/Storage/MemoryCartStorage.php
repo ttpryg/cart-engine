@@ -17,12 +17,14 @@ class MemoryCartStorage implements CartStorageInterface
     public function save(Cart $cart): bool
     {
         $this->carts[$cart->getId()] = $cart;
+
         return true;
     }
 
     public function delete(string $cartId): bool
     {
         unset($this->carts[$cartId]);
+
         return true;
     }
 

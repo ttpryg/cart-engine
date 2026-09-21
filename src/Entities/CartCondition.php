@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ttpryg\CartEngine\Entities;
 
 use Ttpryg\CartEngine\Contracts\ConditionInterface;
@@ -7,27 +9,23 @@ use Ttpryg\CartEngine\ValueObjects\ConditionValue;
 
 class CartCondition implements ConditionInterface
 {
-    private string $name;
-    private string $type; // discount, tax, fee, shipping
-    private string $target; // cart, item
-    private ?string $itemId;
-    private ConditionValue $value;
-    private array $attributes;
+    private readonly string $type; // discount, tax, fee, shipping
+
+    private readonly string $target;
+
+    private readonly ConditionValue $conditionValue;
 
     public function __construct(
-        string $name,
+        private readonly string $name,
         string $type,
         string $value,
         string $target = 'cart',
-        ?string $itemId = null,
-        array $attributes = []
+        private readonly ?string $itemId = null,
+        private readonly array $attributes = []
     ) {
-        $this->name = $name;
         $this->type = strtolower($type);
         $this->target = strtolower($target);
-        $this->itemId = $itemId;
-        $this->value = new ConditionValue($value);
-        $this->attributes = $attributes;
+        $this->conditionValue = new ConditionValue($value);
     }
 
     public function getName(): string
@@ -52,7 +50,7 @@ class CartCondition implements ConditionInterface
 
     public function getValue(): string
     {
-        return $this->value->getValueString();
+        return $this->conditionValue->getValueString();
     }
 
     public function getAttributes(): array
@@ -62,7 +60,7 @@ class CartCondition implements ConditionInterface
 
     public function calculate(float $baseAmount): float
     {
-        return $this->value->calculate($baseAmount);
+        return $this->conditionValue->calculate($baseAmount);
     }
 
     public function toArray(): array
