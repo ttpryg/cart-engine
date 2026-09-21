@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ttpryg\CartEngine\Events;
 
 use Ttpryg\CartEngine\Entities\Cart;

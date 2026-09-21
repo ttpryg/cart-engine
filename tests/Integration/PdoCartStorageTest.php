@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Ttpryg\CartEngine\Tests\Integration;
 
 use PDO;
@@ -12,7 +14,8 @@ use Ttpryg\CartEngine\Storage\PdoCartStorage;
 class PdoCartStorageTest extends TestCase
 {
     private PDO $pdo;
-    private PdoCartStorage $storage;
+
+    private PdoCartStorage $pdoCartStorage;
 
     protected function setUp(): void
     {
@@ -58,14 +61,14 @@ class PdoCartStorageTest extends TestCase
             );
         ");
 
-        $this->storage = new PdoCartStorage($this->pdo);
+        $this->pdoCartStorage = new PdoCartStorage($this->pdo);
     }
 
     // POSITIVE CASE: Save and Retrieve Cart via PDO
-    public function testSaveAndRetrieveCartFromDatabase(): void
+    public function test_save_and_retrieve_cart_from_database(): void
     {
         $cart = new Cart(id: 'db_cart_100', userId: 42, currency: 'IDR');
-        $item = new CartItem(
+        $cartItem = new CartItem(
             itemType: 'car_rental',
             itemId: 'avanza_01',
             name: 'Rental Toyota Avanza',
@@ -73,14 +76,14 @@ class PdoCartStorageTest extends TestCase
             quantity: 3.0,
             attributes: ['with_driver' => true]
         );
-        $cart->addItem($item);
+        $cart->addItem($cartItem);
         $cart->addCondition(new CartCondition('DEPOSIT', 'fee', '+100000'));
 
-        $saved = $this->storage->save($cart);
+        $saved = $this->pdoCartStorage->save($cart);
         $this->assertTrue($saved);
-        $this->assertTrue($this->storage->exists('db_cart_100'));
+        $this->assertTrue($this->pdoCartStorage->exists('db_cart_100'));
 
-        $retrieved = $this->storage->get('db_cart_100');
+        $retrieved = $this->pdoCartStorage->get('db_cart_100');
         $this->assertNotNull($retrieved);
         $this->assertEquals(42, $retrieved->getUserId());
         $this->assertCount(1, $retrieved->getItems());
@@ -89,14 +92,14 @@ class PdoCartStorageTest extends TestCase
     }
 
     // NEGATIVE CASE: Delete Cart
-    public function testDeleteCartFromDatabase(): void
+    public function test_delete_cart_from_database(): void
     {
         $cart = new Cart(id: 'db_cart_to_delete');
-        $this->storage->save($cart);
+        $this->pdoCartStorage->save($cart);
 
-        $this->assertTrue($this->storage->exists('db_cart_to_delete'));
-        $this->storage->delete('db_cart_to_delete');
-        $this->assertFalse($this->storage->exists('db_cart_to_delete'));
-        $this->assertNull($this->storage->get('db_cart_to_delete'));
+        $this->assertTrue($this->pdoCartStorage->exists('db_cart_to_delete'));
+        $this->pdoCartStorage->delete('db_cart_to_delete');
+        $this->assertFalse($this->pdoCartStorage->exists('db_cart_to_delete'));
+        $this->assertNull($this->pdoCartStorage->get('db_cart_to_delete'));
     }
 }

@@ -7,31 +7,7 @@ use Ttpryg\CartEngine\ValueObjects\CartTotals;
 
 class Cart implements CartInterface
 {
-    private string $id;
-    private int|string|null $userId;
-    private array $items; // Array of CartItem
-    private array $conditions; // Array of CartCondition
-    private string $currency;
-    private array $metadata;
-    private string $status;
-
-    public function __construct(
-        string $id,
-        int|string|null $userId = null,
-        array $items = [],
-        array $conditions = [],
-        string $currency = 'IDR',
-        array $metadata = [],
-        string $status = 'active'
-    ) {
-        $this->id = $id;
-        $this->userId = $userId;
-        $this->items = $items;
-        $this->conditions = $conditions;
-        $this->currency = $currency;
-        $this->metadata = $metadata;
-        $this->status = $status;
-    }
+    public function __construct(private readonly string $id, private int|string|null $userId = null, private array $items = [], private array $conditions = [], private readonly string $currency = 'IDR', private readonly array $metadata = [], private readonly string $status = 'active') {}
 
     public function getId(): string
     {
@@ -46,6 +22,7 @@ class Cart implements CartInterface
     public function setUserId(int|string|null $userId): self
     {
         $this->userId = $userId;
+
         return $this;
     }
 
@@ -59,14 +36,14 @@ class Cart implements CartInterface
         return $this->items[$key] ?? null;
     }
 
-    public function addItem(CartItem $item): self
+    public function addItem(CartItem $cartItem): self
     {
-        $key = $item->getKey();
+        $key = $cartItem->getKey();
         if (isset($this->items[$key])) {
             $existing = $this->items[$key];
-            $existing->setQuantity($existing->getQuantity() + $item->getQuantity());
+            $existing->setQuantity($existing->getQuantity() + $cartItem->getQuantity());
         } else {
-            $this->items[$key] = $item;
+            $this->items[$key] = $cartItem;
         }
 
         return $this;
@@ -75,6 +52,7 @@ class Cart implements CartInterface
     public function removeItem(string $key): self
     {
         unset($this->items[$key]);
+
         return $this;
     }
 
@@ -87,6 +65,7 @@ class Cart implements CartInterface
                 $this->items[$key]->setQuantity($quantity);
             }
         }
+
         return $this;
     }
 
@@ -94,6 +73,7 @@ class Cart implements CartInterface
     {
         $this->items = [];
         $this->conditions = [];
+
         return $this;
     }
 
@@ -102,15 +82,17 @@ class Cart implements CartInterface
         return $this->conditions;
     }
 
-    public function addCondition(CartCondition $condition): self
+    public function addCondition(CartCondition $cartCondition): self
     {
-        $this->conditions[$condition->getName()] = $condition;
+        $this->conditions[$cartCondition->getName()] = $cartCondition;
+
         return $this;
     }
 
     public function removeCondition(string $name): self
     {
         unset($this->conditions[$name]);
+
         return $this;
     }
 
@@ -130,6 +112,7 @@ class Cart implements CartInterface
         foreach ($this->items as $item) {
             $subtotal += $item->getSubTotal();
         }
+
         return round($subtotal, 2);
     }
 

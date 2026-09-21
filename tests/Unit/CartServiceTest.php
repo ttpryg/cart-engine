@@ -12,45 +12,46 @@ use Ttpryg\CartEngine\Storage\MemoryCartStorage;
 
 class CartServiceTest extends TestCase
 {
-    private MemoryCartStorage $storage;
-    private CartService $service;
+    private MemoryCartStorage $memoryCartStorage;
+
+    private CartService $cartService;
 
     protected function setUp(): void
     {
-        $this->storage = new MemoryCartStorage();
-        $this->service = new CartService($this->storage);
+        $this->memoryCartStorage = new MemoryCartStorage;
+        $this->cartService = new CartService($this->memoryCartStorage);
     }
 
     // POSITIVE CASE: Shopping E-Commerce Products (Item-Agnostic)
-    public function testAddShoppingProductsAndCalculateTotals(): void
+    public function test_add_shopping_products_and_calculate_totals(): void
     {
         $cartId = 'user_session_1';
 
         // Add Product Item 1
-        $this->service->addItem($cartId, 'product', 101, 'Kemeja Formal', 200000.0, 2.0, ['color' => 'Blue']);
+        $this->cartService->addItem($cartId, 'product', 101, 'Kemeja Formal', 200000.0, 2.0, ['color' => 'Blue']);
         // Add Product Item 2
-        $this->service->addItem($cartId, 'product', 102, 'Celana Chino', 150000.0, 1.0);
+        $this->cartService->addItem($cartId, 'product', 102, 'Celana Chino', 150000.0, 1.0);
 
         // Apply Voucher Condition (-10%)
-        $this->service->applyCondition($cartId, new CartCondition('VOUCHER10', 'discount', '-10%'));
+        $this->cartService->applyCondition($cartId, new CartCondition('VOUCHER10', 'discount', '-10%'));
 
-        $totals = $this->service->getTotals($cartId);
+        $cartTotals = $this->cartService->getTotals($cartId);
 
         // Subtotal = (200,000 * 2) + 150,000 = 550,000
         // Discount = 10% of 550,000 = 55,000
         // GrandTotal = 495,000
-        $this->assertEquals(550000.0, $totals->subtotal);
-        $this->assertEquals(55000.0, $totals->discountTotal);
-        $this->assertEquals(495000.0, $totals->grandTotal);
+        $this->assertEquals(550000.0, $cartTotals->subtotal);
+        $this->assertEquals(55000.0, $cartTotals->discountTotal);
+        $this->assertEquals(495000.0, $cartTotals->grandTotal);
     }
 
     // POSITIVE CASE: Booking / Reservation (Decimal Quantity for Nights/Hours)
-    public function testBookingReservationFlow(): void
+    public function test_booking_reservation_flow(): void
     {
         $cartId = 'booking_sess_99';
 
         // Add Hotel Booking Item (3.5 days / nights, price 400,000 per night)
-        $this->service->addItem(
+        $this->cartService->addItem(
             cartId: $cartId,
             itemType: 'hotel_room',
             itemId: 'deluxe_suite',
@@ -61,32 +62,32 @@ class CartServiceTest extends TestCase
         );
 
         // Apply Tax (+11% PPN)
-        $this->service->applyCondition($cartId, new CartCondition('PPN 11%', 'tax', '+11%'));
+        $this->cartService->applyCondition($cartId, new CartCondition('PPN 11%', 'tax', '+11%'));
 
-        $totals = $this->service->getTotals($cartId);
+        $cartTotals = $this->cartService->getTotals($cartId);
 
         // Subtotal = 400,000 * 3.5 = 1,400,000
         // Tax = 11% of 1,400,000 = 154,000
         // GrandTotal = 1,554,000
-        $this->assertEquals(1400000.0, $totals->subtotal);
-        $this->assertEquals(154000.0, $totals->taxTotal);
-        $this->assertEquals(1554000.0, $totals->grandTotal);
+        $this->assertEquals(1400000.0, $cartTotals->subtotal);
+        $this->assertEquals(154000.0, $cartTotals->taxTotal);
+        $this->assertEquals(1554000.0, $cartTotals->grandTotal);
     }
 
     // POSITIVE CASE: Events Dispatched on Action
-    public function testEventsDispatchedOnItemAddedAndConditionApplied(): void
+    public function test_events_dispatched_on_item_added_and_condition_applied(): void
     {
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects($this->exactly(2))
             ->method('dispatch')
-            ->willReturnCallback(function (object $event) {
+            ->willReturnCallback(function (object $event): void {
                 $this->assertTrue(
                     $event instanceof ItemAddedToCartEvent || $event instanceof ConditionAppliedEvent
                 );
             });
 
-        $service = new CartService($this->storage, $dispatcher);
-        $service->addItem('cart_evt', 'service', 1, 'Cleaning Service', 100000.0);
-        $service->applyCondition('cart_evt', new CartCondition('SERVICE_FEE', 'fee', '+10000'));
+        $cartService = new CartService($this->memoryCartStorage, $dispatcher);
+        $cartService->addItem('cart_evt', 'service', 1, 'Cleaning Service', 100000.0);
+        $cartService->applyCondition('cart_evt', new CartCondition('SERVICE_FEE', 'fee', '+10000'));
     }
 }

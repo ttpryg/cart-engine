@@ -10,22 +10,7 @@ use Ttpryg\CartEngine\Entities\CartItem;
 
 class PdoCartStorage implements CartStorageInterface
 {
-    private PDO $pdo;
-    private string $cartsTable;
-    private string $itemsTable;
-    private string $conditionsTable;
-
-    public function __construct(
-        PDO $pdo,
-        string $cartsTable = 'carts',
-        string $itemsTable = 'cart_items',
-        string $conditionsTable = 'cart_conditions'
-    ) {
-        $this->pdo = $pdo;
-        $this->cartsTable = $cartsTable;
-        $this->itemsTable = $itemsTable;
-        $this->conditionsTable = $conditionsTable;
-    }
+    public function __construct(private readonly PDO $pdo, private readonly string $cartsTable = 'carts', private readonly string $itemsTable = 'cart_items', private readonly string $conditionsTable = 'cart_conditions') {}
 
     public function get(string $cartId): ?Cart
     {
@@ -34,7 +19,7 @@ class PdoCartStorage implements CartStorageInterface
         $stmt->execute(['id' => $cartId]);
         $cartRow = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$cartRow) {
+        if (! $cartRow) {
             return null;
         }
 
@@ -45,8 +30,8 @@ class PdoCartStorage implements CartStorageInterface
 
         $items = [];
         while ($row = $stmtItems->fetch(PDO::FETCH_ASSOC)) {
-            $attrs = !empty($row['attributes']) ? json_decode($row['attributes'], true) : [];
-            $meta = !empty($row['metadata']) ? json_decode($row['metadata'], true) : [];
+            $attrs = ! empty($row['attributes']) ? json_decode($row['attributes'], associative: true) : [];
+            $meta = ! empty($row['metadata']) ? json_decode($row['metadata'], associative: true) : [];
 
             $item = new CartItem(
                 itemType: $row['item_type'],
@@ -69,7 +54,7 @@ class PdoCartStorage implements CartStorageInterface
 
         $conditions = [];
         while ($row = $stmtConds->fetch(PDO::FETCH_ASSOC)) {
-            $attrs = !empty($row['attributes']) ? json_decode($row['attributes'], true) : [];
+            $attrs = ! empty($row['attributes']) ? json_decode($row['attributes'], associative: true) : [];
 
             $condition = new CartCondition(
                 name: $row['name'],
@@ -83,7 +68,7 @@ class PdoCartStorage implements CartStorageInterface
             $conditions[$condition->getName()] = $condition;
         }
 
-        $metadata = !empty($cartRow['metadata']) ? json_decode($cartRow['metadata'], true) : [];
+        $metadata = ! empty($cartRow['metadata']) ? json_decode($cartRow['metadata'], associative: true) : [];
 
         return new Cart(
             id: $cartRow['id'],
@@ -173,6 +158,7 @@ class PdoCartStorage implements CartStorageInterface
             }
 
             $this->pdo->commit();
+
             return true;
         } catch (\Throwable $e) {
             $this->pdo->rollBack();
@@ -184,6 +170,7 @@ class PdoCartStorage implements CartStorageInterface
     {
         $sql = "DELETE FROM {$this->cartsTable} WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
+
         return $stmt->execute(['id' => $cartId]);
     }
 
@@ -192,6 +179,7 @@ class PdoCartStorage implements CartStorageInterface
         $sql = "SELECT COUNT(*) FROM {$this->cartsTable} WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute(['id' => $cartId]);
+
         return (int) $stmt->fetchColumn() > 0;
     }
 }

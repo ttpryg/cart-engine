@@ -16,16 +16,16 @@ use Ttpryg\CartEngine\ValueObjects\CartTotals;
 class CartService
 {
     public function __construct(
-        private CartStorageInterface $storage,
-        private ?EventDispatcherInterface $eventDispatcher = null
+        private readonly CartStorageInterface $cartStorage,
+        private readonly ?EventDispatcherInterface $eventDispatcher = null
     ) {}
 
     public function getCart(string $cartId, int|string|null $userId = null, string $currency = 'IDR'): Cart
     {
-        $cart = $this->storage->get($cartId);
-        if (!$cart) {
+        $cart = $this->cartStorage->get($cartId);
+        if (! $cart instanceof \Ttpryg\CartEngine\Entities\Cart) {
             $cart = new Cart(id: $cartId, userId: $userId, currency: $currency);
-            $this->storage->save($cart);
+            $this->cartStorage->save($cart);
         }
 
         return $cart;
@@ -44,7 +44,7 @@ class CartService
     ): CartItem {
         $cart = $this->getCart($cartId, $userId);
 
-        $item = new CartItem(
+        $cartItem = new CartItem(
             itemType: $itemType,
             itemId: $itemId,
             name: $name,
@@ -54,12 +54,12 @@ class CartService
             metadata: $metadata
         );
 
-        $cart->addItem($item);
-        $this->storage->save($cart);
+        $cart->addItem($cartItem);
+        $this->cartStorage->save($cart);
 
-        $this->eventDispatcher?->dispatch(new ItemAddedToCartEvent($cart, $item));
+        $this->eventDispatcher?->dispatch(new ItemAddedToCartEvent($cart, $cartItem));
 
-        return $item;
+        return $cartItem;
     }
 
     public function updateQuantity(string $cartId, string $itemKey, float $quantity): Cart
@@ -67,7 +67,8 @@ class CartService
         $cart = $this->getCart($cartId);
         $cart->updateQuantity($itemKey, $quantity);
 
-        $this->storage->save($cart);
+        $this->cartStorage->save($cart);
+
         return $cart;
     }
 
@@ -76,19 +77,19 @@ class CartService
         $cart = $this->getCart($cartId);
         $cart->removeItem($itemKey);
 
-        $this->storage->save($cart);
+        $this->cartStorage->save($cart);
         $this->eventDispatcher?->dispatch(new ItemRemovedFromCartEvent($cart, $itemKey));
 
         return $cart;
     }
 
-    public function applyCondition(string $cartId, CartCondition $condition): Cart
+    public function applyCondition(string $cartId, CartCondition $cartCondition): Cart
     {
         $cart = $this->getCart($cartId);
-        $cart->addCondition($condition);
+        $cart->addCondition($cartCondition);
 
-        $this->storage->save($cart);
-        $this->eventDispatcher?->dispatch(new ConditionAppliedEvent($cart, $condition));
+        $this->cartStorage->save($cart);
+        $this->eventDispatcher?->dispatch(new ConditionAppliedEvent($cart, $cartCondition));
 
         return $cart;
     }
@@ -98,7 +99,8 @@ class CartService
         $cart = $this->getCart($cartId);
         $cart->removeCondition($conditionName);
 
-        $this->storage->save($cart);
+        $this->cartStorage->save($cart);
+
         return $cart;
     }
 
@@ -107,7 +109,7 @@ class CartService
         $cart = $this->getCart($cartId);
         $cart->clear();
 
-        $this->storage->save($cart);
+        $this->cartStorage->save($cart);
         $this->eventDispatcher?->dispatch(new CartClearedEvent($cart));
 
         return $cart;
@@ -116,6 +118,7 @@ class CartService
     public function getTotals(string $cartId): CartTotals
     {
         $cart = $this->getCart($cartId);
+
         return $cart->getTotals();
     }
 
@@ -125,7 +128,7 @@ class CartService
         $snapshot = $cart->toArray();
 
         // Optionally clear or mark cart
-        $this->storage->delete($cartId);
+        $this->cartStorage->delete($cartId);
 
         return $snapshot;
     }
