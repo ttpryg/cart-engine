@@ -8,9 +8,11 @@ use Ttpryg\CartEngine\Entities\Cart;
 use Ttpryg\CartEngine\Entities\CartCondition;
 use Ttpryg\CartEngine\Entities\CartItem;
 use Ttpryg\CartEngine\Events\CartClearedEvent;
+use Ttpryg\CartEngine\Events\CartCheckedOutEvent;
 use Ttpryg\CartEngine\Events\ConditionAppliedEvent;
 use Ttpryg\CartEngine\Events\ItemAddedToCartEvent;
 use Ttpryg\CartEngine\Events\ItemRemovedFromCartEvent;
+use Ttpryg\CartEngine\Exceptions\CartNotFoundException;
 use Ttpryg\CartEngine\ValueObjects\CartTotals;
 
 class CartService
@@ -23,7 +25,7 @@ class CartService
     public function getCart(string $cartId, int|string|null $userId = null, string $currency = 'IDR'): Cart
     {
         $cart = $this->cartStorage->get($cartId);
-        if (! $cart instanceof \Ttpryg\CartEngine\Entities\Cart) {
+        if (! $cart instanceof Cart) {
             $cart = new Cart(id: $cartId, userId: $userId, currency: $currency);
             $this->cartStorage->save($cart);
         }
@@ -124,12 +126,28 @@ class CartService
 
     public function checkout(string $cartId): array
     {
-        $cart = $this->getCart($cartId);
-        $snapshot = $cart->toArray();
+        $cart = $this->cartStorage->get($cartId);
+        if (! $cart instanceof Cart) {
+            throw CartNotFoundException::byId($cartId);
+        }
 
-        // Optionally clear or mark cart
-        $this->cartStorage->delete($cartId);
+        // Idempotent: an already completed cart returns the same snapshot
+        // without dispatching a second checkout event.
+        if ($cart->getStatus() !== Cart::STATUS_COMPLETED) {
+            $cart->setStatus(Cart::STATUS_COMPLETED);
+            $this->cartStorage->save($cart);
+
+            $snapshot = $cart->toArray();
+            $this->eventDispatcher?->dispatch(new CartCheckedOutEvent($cart, $snapshot));
+        } else {
+            $snapshot = $cart->toArray();
+        }
 
         return $snapshot;
+    }
+
+    public function deleteCart(string $cartId): bool
+    {
+        return $this->cartStorage->delete($cartId);
     }
 }

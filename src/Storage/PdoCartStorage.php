@@ -83,7 +83,12 @@ class PdoCartStorage implements CartStorageInterface
 
     public function save(Cart $cart): bool
     {
-        $this->pdo->beginTransaction();
+        // Join an already open transaction instead of nesting a new one
+        // (nested beginTransaction() throws and would roll back the caller's work).
+        $ownsTransaction = ! $this->pdo->inTransaction();
+        if ($ownsTransaction) {
+            $this->pdo->beginTransaction();
+        }
         try {
             // Upsert Cart Header
             $sqlCart = "INSERT INTO {$this->cartsTable} (id, user_id, status, currency, metadata) 
@@ -109,7 +114,7 @@ class PdoCartStorage implements CartStorageInterface
             $stmtCart->execute([
                 'id' => $cart->getId(),
                 'user_id' => $cart->getUserId(),
-                'status' => 'active',
+                'status' => $cart->getStatus(),
                 'currency' => $cart->getCurrency(),
                 'metadata' => json_encode($cart->getMetadata()),
             ]);
@@ -157,11 +162,15 @@ class PdoCartStorage implements CartStorageInterface
                 ]);
             }
 
-            $this->pdo->commit();
+            if ($ownsTransaction) {
+                $this->pdo->commit();
+            }
 
             return true;
         } catch (\Throwable $e) {
-            $this->pdo->rollBack();
+            if ($ownsTransaction && $this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw $e;
         }
     }
