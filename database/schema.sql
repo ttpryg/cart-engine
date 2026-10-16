@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS cart_conditions (
     name VARCHAR(100) NOT NULL COMMENT 'Kupon, PPN 11%, Biaya Layanan',
     type VARCHAR(30) NOT NULL COMMENT 'discount, tax, fee, shipping',
     target ENUM('cart', 'item') NOT NULL DEFAULT 'cart',
-    item_id BIGINT UNSIGNED NULL COMMENT 'Jika target = item',
+    item_id VARCHAR(100) NULL COMMENT 'Jika target = item: item_id sumber, key, atau id cart_items',
     value VARCHAR(50) NOT NULL COMMENT '-10%, +11%, -50000, +20000',
     attributes JSON NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -4,9 +4,12 @@ namespace Ttpryg\CartEngine\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Ttpryg\CartEngine\Contracts\EventDispatcherInterface;
+use Ttpryg\CartEngine\Entities\Cart;
 use Ttpryg\CartEngine\Entities\CartCondition;
+use Ttpryg\CartEngine\Events\CartCheckedOutEvent;
 use Ttpryg\CartEngine\Events\ConditionAppliedEvent;
 use Ttpryg\CartEngine\Events\ItemAddedToCartEvent;
+use Ttpryg\CartEngine\Exceptions\CartNotFoundException;
 use Ttpryg\CartEngine\Services\CartService;
 use Ttpryg\CartEngine\Storage\MemoryCartStorage;
 
@@ -89,5 +92,113 @@ class CartServiceTest extends TestCase
         $cartService = new CartService($this->memoryCartStorage, $dispatcher);
         $cartService->addItem('cart_evt', 'service', 1, 'Cleaning Service', 100000.0);
         $cartService->applyCondition('cart_evt', new CartCondition('SERVICE_FEE', 'fee', '+10000'));
+    }
+
+    // POSITIVE CASE: Checkout marks cart completed and returns a snapshot
+    public function test_checkout_marks_cart_completed_and_keeps_it_in_storage(): void
+    {
+        $this->cartService->addItem('co_1', 'product', 101, 'Sepatu', 250000.0);
+
+        $snapshot = $this->cartService->checkout('co_1');
+
+        $this->assertSame('completed', $snapshot['status']);
+        $this->assertEquals(250000.0, $snapshot['totals']['grand_total']);
+
+        // Cart is retained (not deleted) so history/audit remains possible
+        $storedCart = $this->memoryCartStorage->get('co_1');
+        $this->assertNotNull($storedCart);
+        $this->assertSame(Cart::STATUS_COMPLETED, $storedCart->getStatus());
+    }
+
+    // POSITIVE CASE: Checkout is idempotent — one event, stable snapshot
+    public function test_checkout_is_idempotent_and_dispatches_single_event(): void
+    {
+        $checkoutEvents = 0;
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects($this->exactly(2))
+            ->method('dispatch')
+            ->willReturnCallback(function (object $event) use (&$checkoutEvents): void {
+                // addItem dispatches ItemAddedToCartEvent, checkout dispatches CartCheckedOutEvent
+                if ($event instanceof CartCheckedOutEvent) {
+                    $checkoutEvents++;
+                }
+            });
+
+        $cartService = new CartService($this->memoryCartStorage, $dispatcher);
+        $cartService->addItem('co_2', 'product', 101, 'Sepatu', 250000.0);
+
+        $first = $cartService->checkout('co_2');
+        $second = $cartService->checkout('co_2');
+
+        $this->assertSame(1, $checkoutEvents);
+        $this->assertEquals($first, $second);
+        $this->assertSame('completed', $second['status']);
+    }
+
+    // NEGATIVE CASE: Checkout on a missing cart
+    public function test_checkout_throws_when_cart_does_not_exist(): void
+    {
+        $this->expectException(CartNotFoundException::class);
+
+        $this->cartService->checkout('missing_cart');
+    }
+
+    // POSITIVE CASE: Adding an item after checkout reactivates the cart
+    public function test_adding_item_after_checkout_reactivates_cart(): void
+    {
+        $this->cartService->addItem('co_3', 'product', 101, 'Sepatu', 100000.0);
+        $this->cartService->checkout('co_3');
+        $this->assertSame(Cart::STATUS_COMPLETED, $this->cartService->getCart('co_3')->getStatus());
+
+        $this->cartService->addItem('co_3', 'product', 102, 'Tas', 50000.0);
+
+        $this->assertSame(Cart::STATUS_ACTIVE, $this->cartService->getCart('co_3')->getStatus());
+    }
+
+    // POSITIVE CASE: deleteCart removes the cart from storage
+    public function test_delete_cart_removes_cart_from_storage(): void
+    {
+        $this->cartService->addItem('del_1', 'product', 101, 'Sepatu', 100000.0);
+        $this->assertTrue($this->memoryCartStorage->exists('del_1'));
+
+        $this->assertTrue($this->cartService->deleteCart('del_1'));
+        $this->assertFalse($this->memoryCartStorage->exists('del_1'));
+        $this->assertNull($this->memoryCartStorage->get('del_1'));
+    }
+
+    // POSITIVE CASE: Per-item condition through the service layer
+    public function test_item_level_discount_through_service_layer(): void
+    {
+        $this->cartService->addItem('svc_item', 'product', 101, 'Kemeja', 100000.0, 2.0);
+        $this->cartService->addItem('svc_item', 'product', 102, 'Celana', 50000.0, 1.0);
+
+        $this->cartService->applyCondition(
+            'svc_item',
+            new CartCondition('KEMEJA10', 'discount', '-10%', target: 'item', itemId: '101')
+        );
+
+        $cartTotals = $this->cartService->getTotals('svc_item');
+        $this->assertEquals(20000.0, $cartTotals->discountTotal);
+        $this->assertEquals(230000.0, $cartTotals->grandTotal);
+    }
+
+    // POSITIVE CASE: updateQuantity and clearCart flows
+    public function test_update_quantity_and_clear_cart(): void
+    {
+        $cartItem = $this->cartService->addItem('qty_1', 'product', 101, 'Kemeja', 100000.0, 2.0);
+        $key = $cartItem->getKey();
+
+        $this->cartService->updateQuantity('qty_1', $key, 3.0);
+        $this->assertEquals(300000.0, $this->cartService->getTotals('qty_1')->subtotal);
+
+        // Quantity of zero removes the item
+        $this->cartService->updateQuantity('qty_1', $key, 0.0);
+        $this->assertCount(0, $this->memoryCartStorage->get('qty_1')?->getItems() ?? []);
+
+        $this->cartService->addItem('qty_1', 'product', 101, 'Kemeja', 100000.0);
+        $this->cartService->applyCondition('qty_1', new CartCondition('X', 'fee', '+5000'));
+        $cart = $this->cartService->clearCart('qty_1');
+        $this->assertCount(0, $cart->getItems());
+        $this->assertCount(0, $cart->getConditions());
     }
 }

@@ -15,7 +15,7 @@ class FileCartStorage implements CartStorageInterface
     {
         $this->storagePath = rtrim($storagePath ?? sys_get_temp_dir().'/cart_engine_cache', '/');
         if (! is_dir($this->storagePath)) {
-            mkdir($this->storagePath, 0777, recursive: true);
+            mkdir($this->storagePath, 0755, recursive: true);
         }
     }
 
@@ -42,10 +42,24 @@ class FileCartStorage implements CartStorageInterface
     public function save(Cart $cart): bool
     {
         $filePath = $this->getFilePath($cart->getId());
-        $data = $cart->toArray();
-        $json = json_encode($data, JSON_PRETTY_PRINT);
+        $json = json_encode($cart->toArray(), JSON_PRETTY_PRINT);
+        if ($json === false) {
+            return false;
+        }
 
-        return file_put_contents($filePath, $json) !== false;
+        // Atomic write: readers never observe a truncated JSON file.
+        $tempPath = $filePath.'.'.bin2hex(random_bytes(6)).'.tmp';
+        if (file_put_contents($tempPath, $json, LOCK_EX) === false) {
+            return false;
+        }
+
+        if (! rename($tempPath, $filePath)) {
+            @unlink($tempPath);
+
+            return false;
+        }
+
+        return true;
     }
 
     public function delete(string $cartId): bool
@@ -66,6 +80,12 @@ class FileCartStorage implements CartStorageInterface
     private function getFilePath(string $cartId): string
     {
         $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $cartId);
+
+        // Different raw IDs can sanitize to the same string (e.g. "a/b" vs "a_b");
+        // append a hash of the original ID whenever sanitization changed it.
+        if ($safeId !== $cartId) {
+            $safeId .= '_'.substr(hash('sha256', $cartId), 0, 10);
+        }
 
         return $this->storagePath.'/cart_'.$safeId.'.json';
     }

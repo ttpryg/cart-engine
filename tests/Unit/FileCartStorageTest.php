@@ -64,4 +64,55 @@ class FileCartStorageTest extends TestCase
     {
         $this->assertNull($this->fileCartStorage->get('unknown_cart_id'));
     }
+
+    // REGRESSION: Sanitized cart IDs must not collide (e.g. "a/b" vs "a_b")
+    public function test_sanitized_cart_ids_do_not_collide(): void
+    {
+        $cartA = new Cart(id: 'a/b', currency: 'IDR');
+        $cartA->addItem(new CartItem(itemType: 'product', itemId: 1, name: 'A', unitPrice: 10000.0));
+
+        $cartB = new Cart(id: 'a_b', currency: 'IDR');
+        $cartB->addItem(new CartItem(itemType: 'product', itemId: 2, name: 'B', unitPrice: 20000.0));
+
+        $this->assertTrue($this->fileCartStorage->save($cartA));
+        $this->assertTrue($this->fileCartStorage->save($cartB));
+
+        $retrievedA = $this->fileCartStorage->get('a/b');
+        $retrievedB = $this->fileCartStorage->get('a_b');
+
+        $this->assertNotNull($retrievedA);
+        $this->assertNotNull($retrievedB);
+        $this->assertEquals('a/b', $retrievedA->getId());
+        $this->assertEquals('a_b', $retrievedB->getId());
+        $this->assertCount(1, $retrievedA->getItems());
+        $this->assertCount(1, $retrievedB->getItems());
+        $this->assertEquals('A', $retrievedA->getItems()[array_key_first($retrievedA->getItems())]->getName());
+        $this->assertEquals('B', $retrievedB->getItems()[array_key_first($retrievedB->getItems())]->getName());
+    }
+
+    // POSITIVE CASE: Atomic save leaves no temporary files behind
+    public function test_save_leaves_no_temp_files_behind(): void
+    {
+        $cart = new Cart(id: 'atomic_1', currency: 'IDR');
+        $cart->addItem(new CartItem(itemType: 'product', itemId: 1, name: 'Item', unitPrice: 1000.0));
+
+        $this->fileCartStorage->save($cart);
+        $this->fileCartStorage->save($cart);
+
+        $tempFiles = glob($this->tempDir.'/*.tmp');
+        $this->assertSame([], is_array($tempFiles) ? $tempFiles : []);
+    }
+
+    // POSITIVE CASE: Status is preserved through save/load round trip
+    public function test_completed_status_survives_round_trip(): void
+    {
+        $cart = new Cart(id: 'status_rt', currency: 'IDR');
+        $cart->setStatus(Cart::STATUS_COMPLETED);
+
+        $this->fileCartStorage->save($cart);
+
+        $retrieved = $this->fileCartStorage->get('status_rt');
+        $this->assertNotNull($retrieved);
+        $this->assertSame(Cart::STATUS_COMPLETED, $retrieved->getStatus());
+    }
 }
