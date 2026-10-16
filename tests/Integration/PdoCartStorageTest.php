@@ -154,8 +154,8 @@ class PdoCartStorageTest extends TestCase
         $this->assertSame('item', $condition->getTarget());
         $this->assertSame('101', $condition->getItemId());
 
-        $totals = $retrieved->getTotals();
-        $this->assertEquals(20000.0, $totals->discountTotal);
-        $this->assertEquals(180000.0, $totals->grandTotal);
+        $cartTotals = $retrieved->getTotals();
+        $this->assertEquals(20000.0, $cartTotals->discountTotal);
+        $this->assertEquals(180000.0, $cartTotals->grandTotal);
     }
 }

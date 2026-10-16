@@ -37,12 +37,12 @@ class SessionCartStorageTest extends TestCase
     // POSITIVE CASE: Save and retrieve cart from session
     public function test_save_and_get_cart_from_session(): void
     {
-        $storage = new SessionCartStorage(self::SESSION_KEY);
+        $sessionCartStorage = new SessionCartStorage(self::SESSION_KEY);
 
-        $this->assertTrue($storage->save($this->createCart('sess_1')));
-        $this->assertTrue($storage->exists('sess_1'));
+        $this->assertTrue($sessionCartStorage->save($this->createCart('sess_1')));
+        $this->assertTrue($sessionCartStorage->exists('sess_1'));
 
-        $retrieved = $storage->get('sess_1');
+        $retrieved = $sessionCartStorage->get('sess_1');
         $this->assertNotNull($retrieved);
         $this->assertEquals('sess_1', $retrieved->getId());
         $this->assertCount(1, $retrieved->getItems());
@@ -65,20 +65,20 @@ class SessionCartStorageTest extends TestCase
     // POSITIVE CASE: Delete removes the cart
     public function test_delete_cart_from_session(): void
     {
-        $storage = new SessionCartStorage(self::SESSION_KEY);
-        $storage->save($this->createCart('sess_3'));
+        $sessionCartStorage = new SessionCartStorage(self::SESSION_KEY);
+        $sessionCartStorage->save($this->createCart('sess_3'));
 
-        $this->assertTrue($storage->delete('sess_3'));
-        $this->assertFalse($storage->exists('sess_3'));
-        $this->assertNull($storage->get('sess_3'));
+        $this->assertTrue($sessionCartStorage->delete('sess_3'));
+        $this->assertFalse($sessionCartStorage->exists('sess_3'));
+        $this->assertNull($sessionCartStorage->get('sess_3'));
     }
 
     // NEGATIVE CASE: Unknown cart returns null
     public function test_get_unknown_cart_returns_null(): void
     {
-        $storage = new SessionCartStorage(self::SESSION_KEY);
+        $sessionCartStorage = new SessionCartStorage(self::SESSION_KEY);
 
-        $this->assertNull($storage->get('missing_cart'));
-        $this->assertFalse($storage->exists('missing_cart'));
+        $this->assertNull($sessionCartStorage->get('missing_cart'));
+        $this->assertFalse($sessionCartStorage->exists('missing_cart'));
     }
 }

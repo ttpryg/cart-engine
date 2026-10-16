@@ -26,13 +26,13 @@ class CartTotalsTest extends TestCase
         $cart->addCondition(new CartCondition('DISC', 'discount', '-10%'));
         $cart->addCondition(new CartCondition('PPN', 'tax', '+11%'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
-        $this->assertEquals(250000.0, $totals->subtotal);
-        $this->assertEquals(25000.0, $totals->discountTotal);
+        $this->assertEquals(250000.0, $cartTotals->subtotal);
+        $this->assertEquals(25000.0, $cartTotals->discountTotal);
         // 11% of (250,000 - 25,000) = 24,750
-        $this->assertEquals(24750.0, $totals->taxTotal);
-        $this->assertEquals(249750.0, $totals->grandTotal);
+        $this->assertEquals(24750.0, $cartTotals->taxTotal);
+        $this->assertEquals(249750.0, $cartTotals->grandTotal);
     }
 
     public function test_item_level_discount_only_applies_to_matching_item(): void
@@ -40,11 +40,11 @@ class CartTotalsTest extends TestCase
         $cart = $this->createTwoItemCart();
         $cart->addCondition(new CartCondition('SHOE10', 'discount', '-10%', target: 'item', itemId: '101'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
         // 10% of item 101 only (200,000)
-        $this->assertEquals(20000.0, $totals->discountTotal);
-        $this->assertEquals(230000.0, $totals->grandTotal);
+        $this->assertEquals(20000.0, $cartTotals->discountTotal);
+        $this->assertEquals(230000.0, $cartTotals->grandTotal);
     }
 
     public function test_item_level_discount_without_item_id_applies_to_all_items(): void
@@ -52,11 +52,11 @@ class CartTotalsTest extends TestCase
         $cart = $this->createTwoItemCart();
         $cart->addCondition(new CartCondition('ALL10', 'discount', '-10%', target: 'item'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
         // 10% of 200,000 + 10% of 50,000
-        $this->assertEquals(25000.0, $totals->discountTotal);
-        $this->assertEquals(225000.0, $totals->grandTotal);
+        $this->assertEquals(25000.0, $cartTotals->discountTotal);
+        $this->assertEquals(225000.0, $cartTotals->grandTotal);
     }
 
     public function test_item_level_discount_matches_by_item_key(): void
@@ -82,13 +82,13 @@ class CartTotalsTest extends TestCase
         $cart->addCondition(new CartCondition('DISC', 'discount', '-10%'));
         $cart->addCondition(new CartCondition('PPN', 'tax', '+11%', target: 'item', itemId: '101'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
-        $this->assertEquals(25000.0, $totals->discountTotal);
+        $this->assertEquals(25000.0, $cartTotals->discountTotal);
         // Item 101 base: 200,000 - pro-rata cart discount (25,000 * 200k/250k = 20,000) = 180,000
         // 11% of 180,000 = 19,800
-        $this->assertEquals(19800.0, $totals->taxTotal);
-        $this->assertEquals(244800.0, $totals->grandTotal);
+        $this->assertEquals(19800.0, $cartTotals->taxTotal);
+        $this->assertEquals(244800.0, $cartTotals->grandTotal);
     }
 
     public function test_fee_and_shipping_use_subtotal_as_base(): void
@@ -97,11 +97,11 @@ class CartTotalsTest extends TestCase
         $cart->addCondition(new CartCondition('DISC', 'discount', '-10%'));
         $cart->addCondition(new CartCondition('SERVICE', 'fee', '+10%'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
         // Fee is 10% of the raw subtotal, not the discounted amount
-        $this->assertEquals(25000.0, $totals->feeTotal);
-        $this->assertEquals(250000.0, $totals->grandTotal);
+        $this->assertEquals(25000.0, $cartTotals->feeTotal);
+        $this->assertEquals(250000.0, $cartTotals->grandTotal);
     }
 
     public function test_grand_total_never_goes_negative(): void
@@ -110,9 +110,9 @@ class CartTotalsTest extends TestCase
         $cart->addItem(new CartItem(itemType: 'product', itemId: 1, name: 'Item', unitPrice: 10000.0, quantity: 1.0));
         $cart->addCondition(new CartCondition('BIG', 'discount', '-50000'));
 
-        $totals = $cart->getTotals();
+        $cartTotals = $cart->getTotals();
 
-        $this->assertEquals(50000.0, $totals->discountTotal);
-        $this->assertEquals(0.0, $totals->grandTotal);
+        $this->assertEquals(50000.0, $cartTotals->discountTotal);
+        $this->assertEquals(0.0, $cartTotals->grandTotal);
     }
 }

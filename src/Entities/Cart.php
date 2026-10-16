@@ -23,6 +23,9 @@ class Cart implements CartInterface
         return $this->id;
     }
 
+    /**
+     * @phpstan-impure Status can change through mutations (addItem, setStatus, ...).
+     */
     public function getStatus(): string
     {
         return $this->status;
@@ -206,7 +209,7 @@ class Cart implements CartInterface
      * across items for item-level taxes). Fees and shipping keep their
      * natural base (subtotal / item subtotal).
      *
-     * @param array<string, float> $itemDiscounts
+     * @param  array<string, float>  $itemDiscounts
      */
     private function calculateTaxesAndFees(float $subtotal, float $discountTotal, array $itemDiscounts): array
     {
@@ -219,7 +222,7 @@ class Cart implements CartInterface
         foreach ($this->conditions as $condition) {
             $type = $condition->getType();
 
-            if ($type !== 'tax' && $type !== 'fee' && $type !== 'shipping') {
+            if (! in_array($type, ['tax', 'fee', 'shipping'], strict: true)) {
                 continue;
             }
 
@@ -272,9 +275,9 @@ class Cart implements CartInterface
      *
      * @return array<string, CartItem>
      */
-    private function matchingItems(CartCondition $condition): array
+    private function matchingItems(CartCondition $cartCondition): array
     {
-        $conditionItemId = $condition->getItemId();
+        $conditionItemId = $cartCondition->getItemId();
         if ($conditionItemId === null) {
             return $this->items;
         }
@@ -302,7 +305,7 @@ class Cart implements CartInterface
 
     private function assertValidStatus(string $status): void
     {
-        if (! in_array($status, [self::STATUS_ACTIVE, self::STATUS_COMPLETED, self::STATUS_ABANDONED], true)) {
+        if (! in_array($status, [self::STATUS_ACTIVE, self::STATUS_COMPLETED, self::STATUS_ABANDONED], strict: true)) {
             throw new \InvalidArgumentException(
                 "Invalid cart status '{$status}'. Allowed: active, completed, abandoned."
             );

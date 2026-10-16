@@ -30,12 +30,14 @@ class DatabaseMigratorTest extends TestCase
         }
     }
 
+    /** @return list<string> */
     private function tableNames(): array
     {
         $stmt = $this->pdo->query("SELECT name FROM sqlite_master WHERE type = 'table'");
         $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
-        return is_array($tables) ? $tables : [];
+        /** @var list<string> $tables */
+        return $tables;
     }
 
     // POSITIVE CASE: Custom schema file creates all cart tables
@@ -70,9 +72,9 @@ class DatabaseMigratorTest extends TestCase
     {
         file_put_contents($this->schemaFile, 'CREATE TABLE IF NOT EXISTS carts (id VARCHAR(64) PRIMARY KEY);');
 
-        $migrator = new DatabaseMigrator($this->pdo, $this->schemaFile);
-        $migrator->migrate();
-        $migrator->migrate();
+        $databaseMigrator = new DatabaseMigrator($this->pdo, $this->schemaFile);
+        $databaseMigrator->migrate();
+        $databaseMigrator->migrate();
 
         $this->assertContains('carts', $this->tableNames());
     }
@@ -80,12 +82,12 @@ class DatabaseMigratorTest extends TestCase
     // NEGATIVE CASE: Missing schema file throws RuntimeException with path
     public function test_migrate_throws_when_schema_file_is_missing(): void
     {
-        $migrator = new DatabaseMigrator($this->pdo, '/nonexistent/path/schema.sql');
+        $databaseMigrator = new DatabaseMigrator($this->pdo, '/nonexistent/path/schema.sql');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('/nonexistent/path/schema.sql');
 
-        $migrator->migrate();
+        $databaseMigrator->migrate();
     }
 
     // POSITIVE CASE: Default bundled schema file resolves and is readable

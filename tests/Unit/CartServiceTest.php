@@ -120,7 +120,7 @@ class CartServiceTest extends TestCase
             ->willReturnCallback(function (object $event) use (&$checkoutEvents): void {
                 // addItem dispatches ItemAddedToCartEvent, checkout dispatches CartCheckedOutEvent
                 if ($event instanceof CartCheckedOutEvent) {
-                    ++$checkoutEvents;
+                    $checkoutEvents++;
                 }
             });
 
@@ -148,11 +148,11 @@ class CartServiceTest extends TestCase
     {
         $this->cartService->addItem('co_3', 'product', 101, 'Sepatu', 100000.0);
         $this->cartService->checkout('co_3');
-        $this->assertSame(Cart::STATUS_COMPLETED, $this->memoryCartStorage->get('co_3')?->getStatus());
+        $this->assertSame(Cart::STATUS_COMPLETED, $this->cartService->getCart('co_3')->getStatus());
 
         $this->cartService->addItem('co_3', 'product', 102, 'Tas', 50000.0);
 
-        $this->assertSame(Cart::STATUS_ACTIVE, $this->memoryCartStorage->get('co_3')?->getStatus());
+        $this->assertSame(Cart::STATUS_ACTIVE, $this->cartService->getCart('co_3')->getStatus());
     }
 
     // POSITIVE CASE: deleteCart removes the cart from storage
@@ -177,9 +177,9 @@ class CartServiceTest extends TestCase
             new CartCondition('KEMEJA10', 'discount', '-10%', target: 'item', itemId: '101')
         );
 
-        $totals = $this->cartService->getTotals('svc_item');
-        $this->assertEquals(20000.0, $totals->discountTotal);
-        $this->assertEquals(230000.0, $totals->grandTotal);
+        $cartTotals = $this->cartService->getTotals('svc_item');
+        $this->assertEquals(20000.0, $cartTotals->discountTotal);
+        $this->assertEquals(230000.0, $cartTotals->grandTotal);
     }
 
     // POSITIVE CASE: updateQuantity and clearCart flows

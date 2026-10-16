@@ -168,10 +168,15 @@ class PdoCartStorage implements CartStorageInterface
 
             return true;
         } catch (\Throwable $e) {
-            if ($ownsTransaction && $this->pdo->inTransaction()) {
-                $this->pdo->rollBack();
-            }
+            $this->rollbackIfOwner($ownsTransaction);
             throw $e;
+        }
+    }
+
+    private function rollbackIfOwner(bool $ownsTransaction): void
+    {
+        if ($ownsTransaction && $this->pdo->inTransaction()) {
+            $this->pdo->rollBack();
         }
     }
 
