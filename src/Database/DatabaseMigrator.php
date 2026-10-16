@@ -13,6 +13,10 @@ class DatabaseMigrator
     public function migrate(): void
     {
         $path = $this->schemaPath ?? __DIR__.'/../../database/schema.sql';
+        if (! is_file($path) || ! is_readable($path)) {
+            throw new \RuntimeException("Unable to load cart-engine schema file: {$path}");
+        }
+
         $sql = file_get_contents($path);
         if ($sql === false) {
             throw new \RuntimeException("Unable to load cart-engine schema file: {$path}");

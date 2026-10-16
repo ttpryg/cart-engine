@@ -12,8 +12,10 @@
   - `PdoCartStorage`: Relational database via PDO (MySQL, MariaDB, SQLite).
   - `MemoryCartStorage`: In-memory storage for unit testing.
   - `SessionCartStorage`: PHP `$_SESSION` wrapper.
-- **Cart Conditions**: Apply discounts (`-10%`, `-50000`), taxes (`+11%`), shipping fees (`+20000`), or booking deposits to the cart.
-- **Domain Events**: `ItemAddedToCartEvent`, `ItemRemovedFromCartEvent`, `CartClearedEvent`, `ConditionAppliedEvent`.
+- **Cart Conditions**: Apply discounts (`-10%`, `-50000`), taxes (`+11%`), shipping fees (`+20000`), or booking deposits to the cart — at **cart level** or **per item** (`target: 'item'`).
+- **Totals Engine**: Taxes are calculated **after discounts** (base = subtotal − discount). Per-item taxes pro-rate any cart-level discount across items. Fees/shipping use the raw subtotal. Grand total never drops below zero.
+- **Domain Events**: `ItemAddedToCartEvent`, `ItemRemovedFromCartEvent`, `CartClearedEvent`, `ConditionAppliedEvent`, `CartCheckedOutEvent`.
+- **Idempotent Checkout**: `checkout()` marks the cart `completed`, persists it (never deletes), returns a snapshot, and dispatches `CartCheckedOutEvent` exactly once.
 
 ---
 
@@ -53,7 +55,7 @@ CREATE TABLE IF NOT EXISTS cart_conditions (
     name VARCHAR(100) NOT NULL,
     type VARCHAR(30) NOT NULL,
     target ENUM('cart', 'item') NOT NULL DEFAULT 'cart',
-    item_id BIGINT UNSIGNED NULL,
+    item_id VARCHAR(100) NULL,
     value VARCHAR(50) NOT NULL,
     attributes JSON NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -122,11 +124,21 @@ $cartService->addItem(
     attributes: ['check_in' => '2026-10-01 14:00', 'check_out' => '2026-10-05 02:00']
 );
 
-// Apply PPN Tax (+11%)
+// Apply PPN Tax (+11%) — calculated after any discount
 $cartService->applyCondition($cartId, new CartCondition('PPN 11%', 'tax', '+11%'));
 
-// Checkout & Export Snapshot
+// Per-item discount: only applies to the matching item
+$cartService->applyCondition(
+    $cartId,
+    new CartCondition('ROOM10', 'discount', '-10%', target: 'item', itemId: 'deluxe_suite')
+);
+
+// Checkout: marks cart "completed", persists it, returns snapshot.
+// Idempotent — calling it again returns the same snapshot without re-dispatching events.
 $orderSnapshot = $cartService->checkout($cartId);
+
+// Cleanup when the order is no longer needed
+$cartService->deleteCart($cartId);
 ```
 
 ---

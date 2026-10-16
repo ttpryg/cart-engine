@@ -33,6 +33,7 @@
     "prefer-stable": true,
     "scripts": {
         "test": "phpunit",
+        "analyse": "phpstan analyse",
         "fix:check": [
             "vendor/bin/rector process --dry-run",
             "vendor/bin/pint --test"
